@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Environment files (sensitive credentials)
+.env
+*.env
+atlas-credentials.env
+
+# Local data & uploads
+data/uploads/
+data/local-backup.json
+
+# Excel file (local data)
+VPS Fee Record.xlsx
+
+# Vercel
+.vercel
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

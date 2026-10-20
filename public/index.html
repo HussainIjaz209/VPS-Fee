@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VPS Fee Tracker - Personal Dashboard</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- Main Container -->
+  <div class="max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- Header Navigation -->
+    <header class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-6 border-b border-slate-800">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <i data-lucide="server" class="w-6 h-6 text-white"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-2xl font-bold tracking-tight text-white">VPS Fee Record</h1>
+            <span id="dbStatusBadge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-950 text-emerald-400 border border-emerald-800/60">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Atlas Connected
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">Personal fee management & payment status tracker</p>
+        </div>
+      </div>
+
+      <!-- Action Toolbar -->
+      <div class="flex flex-wrap items-center gap-2.5">
+        <!-- Year Selector -->
+        <div class="flex items-center bg-slate-800/90 rounded-lg p-1 border border-slate-700">
+          <span class="text-xs text-slate-400 px-2 font-medium">Year:</span>
+          <select id="yearSelect" class="bg-slate-900 text-white text-sm font-semibold rounded px-2.5 py-1 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer">
+            <option value="2025">2025</option>
+            <option value="2026" selected>2026</option>
+            <option value="2027">2027</option>
+          </select>
+        </div>
+
+        <!-- Add User Button -->
+        <button id="btnOpenAddModal" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow-sm shadow-indigo-500/30 transition-all cursor-pointer">
+          <i data-lucide="user-plus" class="w-4 h-4"></i>
+          <span>Add VPS User</span>
+        </button>
+
+        <!-- Export Excel -->
+        <a id="btnExportExcel" href="/api/export-excel" class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium px-3.5 py-2 rounded-lg border border-slate-700 transition cursor-pointer">
+          <i data-lucide="download" class="w-4 h-4 text-emerald-400"></i>
+          <span>Export Excel</span>
+        </a>
+
+        <!-- Import Excel -->
+        <button id="btnOpenImportModal" class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium px-3.5 py-2 rounded-lg border border-slate-700 transition cursor-pointer">
+          <i data-lucide="upload" class="w-4 h-4 text-indigo-400"></i>
+          <span>Import Excel</span>
+        </button>
+
+        <!-- Reminder Generator -->
+        <button id="btnOpenReminders" class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-amber-300 text-sm font-medium px-3.5 py-2 rounded-lg border border-slate-700 transition cursor-pointer">
+          <i data-lucide="bell" class="w-4 h-4 text-amber-400"></i>
+          <span>Unpaid List</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Top Stats Cards -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+      <!-- Total Users -->
+      <div class="bg-slate-800/70 backdrop-blur border border-slate-700/80 rounded-xl p-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total VPS Accounts</p>
+          <h3 id="statTotalUsers" class="text-2xl font-bold text-white mt-1">--</h3>
+          <p class="text-xs text-slate-400 mt-1">Identified by Email & Name</p>
+        </div>
+        <div class="w-11 h-11 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+          <i data-lucide="users" class="w-5 h-5"></i>
+        </div>
+      </div>
+
+      <!-- Paid This Month -->
+      <div class="bg-slate-800/70 backdrop-blur border border-slate-700/80 rounded-xl p-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            Paid in <span class="activeMonthLabel">This Month</span>
+          </p>
+          <div class="flex items-baseline gap-2 mt-1">
+            <h3 id="statPaidCount" class="text-2xl font-bold text-emerald-400">--</h3>
+            <span id="statPaidPercent" class="text-xs text-slate-400">(0%)</span>
+          </div>
+          <p id="statCollectedFee" class="text-xs text-emerald-300/80 mt-1">$0 collected</p>
+        </div>
+        <div class="w-11 h-11 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+          <i data-lucide="check-circle" class="w-5 h-5"></i>
+        </div>
+      </div>
+
+      <!-- Need to Pay (Due) -->
+      <div class="bg-slate-800/70 backdrop-blur border border-slate-700/80 rounded-xl p-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-rose-400 animate-pulse"></span>
+            Need to Pay in <span class="activeMonthLabel">This Month</span>
+          </p>
+          <div class="flex items-baseline gap-2 mt-1">
+            <h3 id="statDueCount" class="text-2xl font-bold text-rose-400">--</h3>
+            <span class="text-xs text-slate-400">pending</span>
+          </div>
+          <p id="statPendingFee" class="text-xs text-rose-300/80 mt-1">$0 pending</p>
+        </div>
+        <div class="w-11 h-11 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+          <i data-lucide="alert-circle" class="w-5 h-5"></i>
+        </div>
+      </div>
+
+      <!-- Not Marked / Unset -->
+      <div class="bg-slate-800/70 backdrop-blur border border-slate-700/80 rounded-xl p-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Unmarked / Undecided</p>
+          <h3 id="statUnsetCount" class="text-2xl font-bold text-slate-300 mt-1">--</h3>
+          <p class="text-xs text-slate-500 mt-1">Needs update for active month</p>
+        </div>
+        <div class="w-11 h-11 rounded-lg bg-slate-700/40 border border-slate-600/30 flex items-center justify-center text-slate-400">
+          <i data-lucide="clock" class="w-5 h-5"></i>
+        </div>
+      </div>
+    </section>
+
+    <!-- Month Tabs Navigation Bar -->
+    <div class="mt-6 bg-slate-800/60 p-2 rounded-xl border border-slate-700/80 flex items-center justify-between overflow-x-auto gap-1">
+      <div id="monthTabsContainer" class="flex items-center gap-1 min-w-max">
+        <!-- Injected via JS: Jan, Feb, Mar ... Dec -->
+      </div>
+    </div>
+
+    <!-- Filter and Search Bar -->
+    <div class="mt-4 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-800/40 p-3 rounded-xl border border-slate-800">
+      <!-- Search Input -->
+      <div class="relative flex-1 max-w-md">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+          <i data-lucide="search" class="w-4 h-4"></i>
+        </div>
+        <input 
+          type="text" 
+          id="searchInput" 
+          placeholder="Search by name, email, or notes..." 
+          class="w-full bg-slate-900/90 text-white text-sm rounded-lg pl-9 pr-4 py-2 border border-slate-700 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+        <button id="btnClearSearch" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Quick Filter Pills: All | Need to Pay | Paid -->
+      <div class="flex items-center gap-1.5 bg-slate-900/80 p-1 rounded-lg border border-slate-700/70">
+        <button data-filter="all" class="filter-tab active text-xs font-semibold px-3 py-1.5 rounded-md transition cursor-pointer">
+          All Users
+        </button>
+        <button data-filter="due" class="filter-tab text-xs font-semibold px-3 py-1.5 rounded-md text-rose-400 hover:text-white transition cursor-pointer flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+          Need to Pay
+        </button>
+        <button data-filter="paid" class="filter-tab text-xs font-semibold px-3 py-1.5 rounded-md text-emerald-400 hover:text-white transition cursor-pointer flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          Paid
+        </button>
+        <button data-filter="unset" class="filter-tab text-xs font-semibold px-3 py-1.5 rounded-md text-slate-400 hover:text-white transition cursor-pointer">
+          Unset
+        </button>
+      </div>
+
+      <!-- Batch Actions -->
+      <div id="batchActionToolbar" class="hidden items-center gap-2">
+        <span id="selectedCountLabel" class="text-xs text-slate-300 font-medium">0 selected</span>
+        <button id="btnBatchPaid" class="text-xs bg-emerald-600/90 hover:bg-emerald-600 text-white font-medium px-2.5 py-1.5 rounded-md transition cursor-pointer">
+          Mark Paid
+        </button>
+        <button id="btnBatchDue" class="text-xs bg-rose-600/90 hover:bg-rose-600 text-white font-medium px-2.5 py-1.5 rounded-md transition cursor-pointer">
+          Mark Need to Pay
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Table Card -->
+    <div class="mt-4 bg-slate-800/80 border border-slate-700/80 rounded-xl overflow-hidden shadow-xl">
+      <!-- Scrollable Table -->
+      <div class="overflow-x-auto max-h-[70vh]">
+        <table class="w-full text-left text-xs sm:text-sm border-collapse">
+          <thead class="sticky top-0 bg-slate-900/95 backdrop-blur z-20 text-slate-300 uppercase text-[11px] tracking-wider border-b border-slate-700">
+            <tr>
+              <th class="p-3 w-10 text-center">
+                <input type="checkbox" id="selectAllCheckbox" class="rounded bg-slate-800 border-slate-600 text-indigo-600 focus:ring-0 cursor-pointer">
+              </th>
+              <th class="p-3 min-w-[200px]">User & Identity</th>
+              <th class="p-3 min-w-[150px]">Billing Cycle & Next Due</th>
+              <th class="p-3 w-20 text-center">Fee</th>
+              <!-- Month columns Jan -> Dec -->
+              <th class="p-2 text-center w-16 month-col" data-month="January">Jan</th>
+              <th class="p-2 text-center w-16 month-col" data-month="February">Feb</th>
+              <th class="p-2 text-center w-16 month-col" data-month="March">Mar</th>
+              <th class="p-2 text-center w-16 month-col" data-month="April">Apr</th>
+              <th class="p-2 text-center w-16 month-col" data-month="May">May</th>
+              <th class="p-2 text-center w-16 month-col" data-month="June">Jun</th>
+              <th class="p-2 text-center w-16 month-col" data-month="July">Jul</th>
+              <th class="p-2 text-center w-16 month-col" data-month="August">Aug</th>
+              <th class="p-2 text-center w-16 month-col" data-month="September">Sep</th>
+              <th class="p-2 text-center w-16 month-col" data-month="October">Oct</th>
+              <th class="p-2 text-center w-16 month-col" data-month="November">Nov</th>
+              <th class="p-2 text-center w-16 month-col" data-month="December">Dec</th>
+              <th class="p-3 w-20 text-right pr-4">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="recordsTableBody" class="divide-y divide-slate-700/60 font-normal">
+            <!-- Dynamic rows will be rendered here -->
+            <tr>
+              <td colspan="17" class="p-8 text-center text-slate-400">
+                <div class="inline-flex items-center gap-2">
+                  <div class="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Loading VPS records...</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Table Footer / Count -->
+      <div class="px-4 py-3 bg-slate-900/70 border-t border-slate-700/70 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2">
+        <div id="tableRecordCountSummary">Showing all records</div>
+        <div class="flex items-center gap-4">
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded bg-emerald-500 inline-block"></span> Paid</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded bg-rose-500 inline-block"></span> Need to Pay (Due)</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded bg-slate-600 inline-block"></span> Unset / None</span>
+          <span class="text-slate-500">|</span>
+          <span class="text-slate-400 italic">Click any month box to cycle status</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALS -->
+
+  <!-- 1. Add / Edit VPS User Modal -->
+  <div id="userModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden transform transition-all">
+      <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+        <h3 id="userModalTitle" class="text-lg font-bold text-white flex items-center gap-2">
+          <i data-lucide="user-plus" class="w-5 h-5 text-indigo-400"></i>
+          <span>Add New VPS User</span>
+        </h3>
+        <button id="btnCloseUserModal" class="text-slate-400 hover:text-white transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="userForm" class="p-6 space-y-4">
+        <input type="hidden" id="userIdInput">
+
+        <!-- Email -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">User Email <span class="text-rose-400">*</span></label>
+          <input 
+            type="email" 
+            id="modalEmailInput" 
+            required 
+            placeholder="e.g. client@example.com"
+            class="w-full bg-slate-900 text-white text-sm rounded-lg px-3.5 py-2.5 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+          <p class="text-[11px] text-slate-400 mt-1">Identity only — no verification email is sent</p>
+        </div>
+
+        <!-- Name / VPS Label -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">User Name / VPS Identifier <span class="text-rose-400">*</span></label>
+          <input 
+            type="text" 
+            id="modalNameInput" 
+            required 
+            placeholder="e.g. John Doe or Junaid 1"
+            class="w-full bg-slate-900 text-white text-sm rounded-lg px-3.5 py-2.5 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <!-- Monthly Fee -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Monthly Fee ($)</label>
+            <input 
+              type="number" 
+              id="modalFeeInput" 
+              value="5" 
+              min="0" 
+              step="any"
+              class="w-full bg-slate-900 text-white text-sm rounded-lg px-3.5 py-2.5 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+            <p class="text-[11px] text-slate-400 mt-1">Fee: $5</p>
+          </div>
+
+          <!-- 1st Payment Date -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">1st Payment Date</label>
+            <input 
+              type="date" 
+              id="modalDateInput" 
+              class="w-full bg-slate-900 text-white text-sm rounded-lg px-3.5 py-2.5 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+            <p class="text-[11px] text-slate-400 mt-1">Start date</p>
+          </div>
+
+          <!-- Upcoming Due Date -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Upcoming Due Date</label>
+            <input 
+              type="date" 
+              id="modalNextDueDateInput" 
+              class="w-full bg-slate-900 text-white text-sm rounded-lg px-3.5 py-2.5 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+            <p class="text-[11px] text-slate-400 mt-1">Next renewal</p>
+          </div>
+        </div>
+
+        <!-- Automatic Renewal Cycle Notice -->
+        <div class="bg-indigo-950/40 border border-indigo-500/30 rounded-xl p-3 text-xs space-y-1">
+          <div class="font-semibold flex items-center gap-1.5 text-indigo-300">
+            <i data-lucide="calendar" class="w-4 h-4 text-indigo-400"></i>
+            <span>Monthly Cycle Rule</span>
+          </div>
+          <p class="text-slate-300">
+            Marked as <strong class="text-emerald-400 font-semibold">PAID</strong> for current month. Next payment will be marked as <strong class="text-rose-400 font-semibold">NEED TO PAY</strong> on the exact same date next month.
+          </p>
+        </div>
+
+        <!-- Notes -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Notes / VPS Specs</label>
+          <textarea 
+            id="modalNotesInput" 
+            rows="2" 
+            placeholder="e.g. 4GB RAM, London Server, MT5 Account #..."
+            class="w-full bg-slate-900 text-white text-sm rounded-lg px-3.5 py-2 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          ></textarea>
+        </div>
+
+        <div class="pt-2 flex items-center justify-end gap-3 border-t border-slate-700/80">
+          <button type="button" id="btnCancelUserModal" class="px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700 transition">
+            Cancel
+          </button>
+          <button type="submit" id="btnSaveUserModal" class="px-5 py-2 rounded-lg text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 transition">
+            Save Record
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. Payment Detail / Edit Modal -->
+  <div id="paymentDetailModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i data-lucide="credit-card" class="w-4 h-4 text-emerald-400"></i>
+          <span>Payment Details</span>
+        </h3>
+        <button id="btnClosePaymentModal" class="text-slate-400 hover:text-white transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4">
+        <div>
+          <p id="paymentTargetUser" class="text-sm font-semibold text-white">User Name</p>
+          <p id="paymentTargetMonth" class="text-xs text-indigo-400 font-medium">October 2026</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Status</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" data-pstatus="paid" class="pstatus-btn p-2 rounded-lg border text-xs font-semibold text-center transition cursor-pointer">
+              Paid
+            </button>
+            <button type="button" data-pstatus="due" class="pstatus-btn p-2 rounded-lg border text-xs font-semibold text-center transition cursor-pointer">
+              Need to Pay
+            </button>
+            <button type="button" data-pstatus="unset" class="pstatus-btn p-2 rounded-lg border text-xs font-semibold text-center transition cursor-pointer">
+              Unset
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Paid Date</label>
+            <input 
+              type="date" 
+              id="paymentDateInput" 
+              class="w-full bg-slate-900 text-white text-sm rounded-lg px-3 py-2 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Amount ($)</label>
+            <input 
+              type="number" 
+              id="paymentAmountInput" 
+              placeholder="5" 
+              min="0"
+              step="any"
+              class="w-full bg-slate-900 text-white text-sm rounded-lg px-3 py-2 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Notes / Trx ID</label>
+          <input 
+            type="text" 
+            id="paymentNotesInput" 
+            placeholder="e.g. Paid via USDT / Bank" 
+            class="w-full bg-slate-900 text-white text-sm rounded-lg px-3 py-2 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+        </div>
+
+        <div class="pt-3 flex justify-end gap-2 border-t border-slate-700/80">
+          <button id="btnSavePaymentDetails" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg shadow transition">
+            Update Payment
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Unpaid List & Reminder Modal -->
+  <div id="remindersModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <i data-lucide="bell" class="w-5 h-5 text-amber-400"></i>
+          <span>Pending Fees / Unpaid Users</span>
+        </h3>
+        <button id="btnCloseRemindersModal" class="text-slate-400 hover:text-white transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <div class="flex items-center justify-between text-xs text-slate-400">
+          <span>Month: <strong id="reminderMonthTitle" class="text-white">October 2026</strong></span>
+          <span id="reminderCountBadge" class="px-2 py-0.5 rounded-full bg-rose-950 text-rose-300 border border-rose-800 font-semibold">0 unpaid</span>
+        </div>
+
+        <!-- Unpaid list box -->
+        <div id="unpaidListBox" class="max-h-56 overflow-y-auto bg-slate-900 rounded-xl p-3 border border-slate-700/80 divide-y divide-slate-800 text-xs">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Copyable Template for WhatsApp / Email -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-xs font-semibold text-slate-300 uppercase">Reminder Message Template</label>
+            <button id="btnCopyReminderText" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1 cursor-pointer">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              <span>Copy Message</span>
+            </button>
+          </div>
+          <textarea 
+            id="reminderTextTemplate" 
+            rows="4" 
+            class="w-full bg-slate-900 text-slate-200 text-xs font-mono rounded-lg p-3 border border-slate-700 focus:outline-none"
+            readonly
+          ></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Import Excel Modal -->
+  <div id="importModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <i data-lucide="upload" class="w-5 h-5 text-indigo-400"></i>
+          <span>Import Excel Sheet</span>
+        </h3>
+        <button id="btnCloseImportModal" class="text-slate-400 hover:text-white transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <p class="text-xs text-slate-300">
+          Upload an Excel (<code class="bg-slate-900 px-1 py-0.5 rounded text-indigo-300">.xlsx</code>) file with columns: 
+          <strong>Email, Name, January ... December, Date of 1st payment</strong>.
+        </p>
+
+        <div class="border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-xl p-6 text-center cursor-pointer transition" id="dropArea">
+          <i data-lucide="file-spreadsheet" class="w-10 h-10 text-emerald-400 mx-auto mb-2"></i>
+          <p class="text-sm font-semibold text-white">Click or drag Excel file here</p>
+          <p class="text-xs text-slate-400 mt-1">.xlsx or .xls files supported</p>
+          <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="hidden">
+        </div>
+        <p id="selectedFileName" class="text-xs text-emerald-400 font-medium text-center hidden"></p>
+
+        <button id="btnSubmitImport" disabled class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg shadow transition">
+          Upload & Sync Records
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- App Script -->
+  <script src="app.js"></script>
+</body>
+</html>
