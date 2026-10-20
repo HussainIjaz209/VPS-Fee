@@ -11,6 +11,9 @@ const xlsx = require('xlsx');
 dotenv.config({ path: path.join(__dirname, 'atlas-credentials.env') });
 dotenv.config();
 
+// Detect Vercel environment (read-only filesystem)
+const IS_VERCEL = !!process.env.VERCEL;
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DB_NAME = 'vps_fee_management';
@@ -28,8 +31,12 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Configure Multer for Excel file uploads
-const upload = multer({ dest: path.join(__dirname, 'data', 'uploads') });
-if (!fs.existsSync(path.join(__dirname, 'data', 'uploads'))) {
+// Use memory storage on Vercel (read-only filesystem), disk otherwise
+const upload = IS_VERCEL
+  ? multer({ storage: multer.memoryStorage() })
+  : multer({ dest: path.join(__dirname, 'data', 'uploads') });
+
+if (!IS_VERCEL && !fs.existsSync(path.join(__dirname, 'data', 'uploads'))) {
   fs.mkdirSync(path.join(__dirname, 'data', 'uploads'), { recursive: true });
 }
 
@@ -53,6 +60,7 @@ function loadLocalBackup() {
 }
 
 function saveLocalBackup(records) {
+  if (IS_VERCEL) return; // filesystem is read-only on Vercel
   try {
     fs.writeFileSync(LOCAL_BACKUP_PATH, JSON.stringify(records, null, 2), 'utf8');
   } catch (e) {
@@ -643,7 +651,10 @@ app.post('/api/import-excel', upload.single('excelFile'), async (req, res) => {
     }
 
     const year = req.body.year || new Date().getFullYear().toString();
-    const wb = xlsx.readFile(req.file.path);
+    // On Vercel (memory storage) use req.file.buffer; locally use req.file.path
+    const wb = IS_VERCEL
+      ? xlsx.read(req.file.buffer, { type: 'buffer' })
+      : xlsx.readFile(req.file.path);
     const sheetName = wb.SheetNames[0];
     const sheet = wb.Sheets[sheetName];
     const rows = xlsx.utils.sheet_to_json(sheet, { defval: null });
@@ -757,8 +768,10 @@ app.post('/api/import-excel', upload.single('excelFile'), async (req, res) => {
 
     saveLocalBackup(localStore);
 
-    // Clean up uploaded file
-    try { fs.unlinkSync(req.file.path); } catch (e) {}
+    // Clean up uploaded file (only on local disk storage, not Vercel)
+    if (!IS_VERCEL) {
+      try { fs.unlinkSync(req.file.path); } catch (e) {}
+    }
 
     res.json({
       success: true,
