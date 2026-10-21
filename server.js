@@ -27,19 +27,29 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Use memory storage for uploads (works on Vercel and locally)
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Global MongoDB Client
+// Global MongoDB Client — reused across warm Vercel invocations
 let mongoClient = null;
 let db = null;
 let lastConnectionError = null;
+let isConnecting = false;
 
-// Connect to MongoDB Atlas
+// Connect to MongoDB Atlas (lazy, cached, safe for serverless)
 async function connectToMongo() {
+  if (db) return; // already connected
+  if (isConnecting) {
+    // Wait for the in-progress connection
+    await new Promise(resolve => setTimeout(resolve, 100));
+    if (db) return;
+  }
+
   const uri = process.env.MONGODB_URI;
   if (!uri) {
     lastConnectionError = 'MONGODB_URI environment variable is not set';
     console.warn('⚠️  MONGODB_URI not set.');
     return;
   }
+
+  isConnecting = true;
   try {
     mongoClient = new MongoClient(uri, { serverSelectionTimeoutMS: 10000 });
     await mongoClient.connect();
@@ -49,12 +59,16 @@ async function connectToMongo() {
     console.log('✅ Connected to MongoDB Atlas!');
   } catch (err) {
     lastConnectionError = err.message;
+    db = null;
     console.error('❌ MongoDB connection failed:', err.message);
+  } finally {
+    isConnecting = false;
   }
 }
 
-// Helper — get the collection (throws if not connected)
-function getCollection() {
+// Helper — ensures connection then returns the collection
+async function getCollection() {
+  if (!db) await connectToMongo();
   if (!db) throw new Error('Database not connected. Check MONGODB_URI and Atlas Network Access settings.');
   return db.collection(COLLECTION_NAME);
 }
@@ -67,7 +81,8 @@ function parseId(id) {
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 // 1. Health & Connection Status
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
+  if (!db) await connectToMongo();
   res.json({
     status: 'ok',
     connected: !!db,
@@ -80,7 +95,7 @@ app.get('/api/health', (req, res) => {
 // 2. Get all records with filters
 app.get('/api/records', async (req, res) => {
   try {
-    const col = getCollection();
+    const col = await getCollection();
     const year = req.query.year || new Date().getFullYear().toString();
     const search = (req.query.search || '').trim().toLowerCase();
     const month = req.query.month;
@@ -169,7 +184,7 @@ function calculateCycleDates(initialDate) {
 // 3. Create a new record
 app.post('/api/records', async (req, res) => {
   try {
-    const col = getCollection();
+    const col = await getCollection();
     const { email, name, monthlyFee, currency, firstPaymentDate, notes, status } = req.body;
 
     if (!email || !name) {
@@ -239,7 +254,7 @@ app.post('/api/records', async (req, res) => {
 // 4. Update record details
 app.put('/api/records/:id', async (req, res) => {
   try {
-    const col = getCollection();
+    const col = await getCollection();
     const { id } = req.params;
     const { email, name, monthlyFee, currency, firstPaymentDate, nextDueDate, notes, status } = req.body;
 
@@ -281,7 +296,7 @@ app.put('/api/records/:id', async (req, res) => {
 // 5. Update payment for a specific month
 app.put('/api/records/:id/payment', async (req, res) => {
   try {
-    const col = getCollection();
+    const col = await getCollection();
     const { id } = req.params;
     const { year, month, status, paidDate, amount, notes } = req.body;
 
@@ -319,7 +334,7 @@ app.put('/api/records/:id/payment', async (req, res) => {
 // 6. Batch update payment status
 app.post('/api/records/batch-payment', async (req, res) => {
   try {
-    const col = getCollection();
+    const col = await getCollection();
     const { ids, year, month, status } = req.body;
     if (!Array.isArray(ids) || !year || !month || !status) {
       return res.status(400).json({ success: false, message: 'Invalid batch parameters.' });
@@ -358,7 +373,7 @@ app.post('/api/records/batch-payment', async (req, res) => {
 // 7. Delete record
 app.delete('/api/records/:id', async (req, res) => {
   try {
-    const col = getCollection();
+    const col = await getCollection();
     const { id } = req.params;
     await col.deleteOne({ _id: parseId(id) });
     res.json({ success: true, message: 'Record deleted.' });
@@ -371,7 +386,7 @@ app.delete('/api/records/:id', async (req, res) => {
 // 8. Statistics & Summary
 app.get('/api/stats', async (req, res) => {
   try {
-    const col = getCollection();
+    const col = await getCollection();
     const year = req.query.year || new Date().getFullYear().toString();
     const currentMonthIndex = new Date().getMonth();
     const month = req.query.month || MONTHS[currentMonthIndex];
@@ -412,7 +427,7 @@ app.get('/api/stats', async (req, res) => {
 // 9. Export to Excel
 app.get('/api/export-excel', async (req, res) => {
   try {
-    const col = getCollection();
+    const col = await getCollection();
     const year = req.query.year || new Date().getFullYear().toString();
     const records = await col.find({}).toArray();
 
@@ -447,7 +462,7 @@ app.get('/api/export-excel', async (req, res) => {
 // 10. Import from uploaded Excel
 app.post('/api/import-excel', upload.single('excelFile'), async (req, res) => {
   try {
-    const col = getCollection();
+    const col = await getCollection();
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'No Excel file uploaded.' });
     }
@@ -547,3 +562,4 @@ startServer();
 
 // Export for Vercel serverless
 module.exports = app;
+
