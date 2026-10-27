@@ -86,25 +86,72 @@
           <i data-lucide="bell" class="w-4 h-4 text-amber-400"></i>
           <span>Unpaid List</span>
         </button>
+
+        <!-- User Profile & Sign Out -->
+        <div id="userProfileBadge" class="flex items-center gap-2 pl-2 sm:pl-3 border-l border-slate-700">
+          <div class="w-8 h-8 rounded-lg bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 flex items-center justify-center font-bold text-xs shadow-inner">
+            HI
+          </div>
+          <div class="hidden sm:block text-left">
+            <div id="loggedInUserText" class="text-xs font-semibold text-white leading-tight">HussainIjaz</div>
+            <div class="text-[10px] text-emerald-400 font-medium">Administrator</div>
+          </div>
+          <button id="btnLogout" title="Sign Out" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 border border-transparent hover:border-slate-700 transition cursor-pointer text-xs font-medium ml-1">
+            <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+            <span class="hidden md:inline">Sign Out</span>
+          </button>
+        </div>
       </div>
     </header>
 
+    <!-- View Navigation Tabs -->
+    <nav class="flex flex-wrap items-center justify-between gap-3 mt-4 p-1.5 bg-slate-800/80 backdrop-blur rounded-xl border border-slate-700/80">
+      <div class="flex items-center gap-1.5">
+        <button id="navTabPaid" data-view="paid" class="main-nav-tab active flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition cursor-pointer">
+          <i data-lucide="credit-card" class="w-4 h-4 text-indigo-400"></i>
+          <span>Paid VPS Clients</span>
+          <span id="badgePaidCount" class="px-2 py-0.5 rounded-full text-xs font-mono bg-indigo-500/20 text-indigo-300">0</span>
+        </button>
+        <button id="navTabFree" data-view="free" class="main-nav-tab flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-slate-400 hover:text-white transition cursor-pointer">
+          <i data-lucide="gift" class="w-4 h-4 text-emerald-400"></i>
+          <span>Exness Free VPS</span>
+          <span id="badgeFreeCount" class="px-2 py-0.5 rounded-full text-xs font-mono bg-emerald-500/20 text-emerald-300">0</span>
+        </button>
+        <button id="navTabAll" data-view="all" class="main-nav-tab flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-slate-400 hover:text-white transition cursor-pointer">
+          <i data-lucide="layers" class="w-4 h-4 text-sky-400"></i>
+          <span>All Accounts</span>
+          <span id="badgeAllCount" class="px-2 py-0.5 rounded-full text-xs font-mono bg-slate-700 text-slate-300">0</span>
+        </button>
+      </div>
+
+      <div id="viewDescriptionBadge" class="hidden sm:flex items-center gap-2 px-3 py-1 text-xs text-slate-400">
+        <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+        <span id="viewDescriptionText">Monthly fee & billing cycle tracker</span>
+      </div>
+    </nav>
+
     <!-- Top Stats Cards -->
     <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-      <!-- Total Users -->
+      <!-- Total Paid VPS Accounts -->
       <div class="bg-slate-800/70 backdrop-blur border border-slate-700/80 rounded-xl p-4 flex items-center justify-between">
         <div>
-          <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total VPS Accounts</p>
-          <h3 id="statTotalUsers" class="text-2xl font-bold text-white mt-1">--</h3>
-          <p class="text-xs text-slate-400 mt-1">Identified by Email & Name</p>
+          <p class="text-xs font-medium text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+            <i data-lucide="credit-card" class="w-3.5 h-3.5 text-indigo-400"></i>
+            <span>Total Paid VPS</span>
+          </p>
+          <div class="flex items-baseline gap-2 mt-1">
+            <h3 id="statTotalUsers" class="text-2xl font-bold text-white">--</h3>
+            <span class="text-xs text-slate-400">clients</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">Monthly fee subscriptions</p>
         </div>
         <div class="w-11 h-11 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-          <i data-lucide="users" class="w-5 h-5"></i>
+          <i data-lucide="server" class="w-5 h-5"></i>
         </div>
       </div>
 
       <!-- Paid This Month -->
-      <div class="bg-slate-800/70 backdrop-blur border border-slate-700/80 rounded-xl p-4 flex items-center justify-between">
+      <div id="statCardPaid" class="bg-slate-800/70 backdrop-blur border border-slate-700/80 rounded-xl p-4 flex items-center justify-between">
         <div>
           <p class="text-xs font-medium text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
@@ -122,7 +169,7 @@
       </div>
 
       <!-- Need to Pay (Due) -->
-      <div class="bg-slate-800/70 backdrop-blur border border-slate-700/80 rounded-xl p-4 flex items-center justify-between">
+      <div id="statCardDue" class="bg-slate-800/70 backdrop-blur border border-slate-700/80 rounded-xl p-4 flex items-center justify-between">
         <div>
           <p class="text-xs font-medium text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full bg-rose-400 animate-pulse"></span>
@@ -139,21 +186,27 @@
         </div>
       </div>
 
-      <!-- Not Marked / Unset -->
+      <!-- Exness Free VPS Accounts -->
       <div class="bg-slate-800/70 backdrop-blur border border-slate-700/80 rounded-xl p-4 flex items-center justify-between">
         <div>
-          <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Unmarked / Undecided</p>
-          <h3 id="statUnsetCount" class="text-2xl font-bold text-slate-300 mt-1">--</h3>
-          <p class="text-xs text-slate-500 mt-1">Needs update for active month</p>
+          <p class="text-xs font-medium text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+            <i data-lucide="gift" class="w-3.5 h-3.5 text-amber-400"></i>
+            <span>Exness Free VPS</span>
+          </p>
+          <div class="flex items-baseline gap-2 mt-1">
+            <h3 id="statFreeCount" class="text-2xl font-bold text-amber-300">--</h3>
+            <span class="text-xs text-slate-400">clients</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">100% Free Sponsored</p>
         </div>
-        <div class="w-11 h-11 rounded-lg bg-slate-700/40 border border-slate-600/30 flex items-center justify-center text-slate-400">
-          <i data-lucide="clock" class="w-5 h-5"></i>
+        <div class="w-11 h-11 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+          <i data-lucide="award" class="w-5 h-5"></i>
         </div>
       </div>
     </section>
 
-    <!-- Month Tabs Navigation Bar -->
-    <div class="mt-6 bg-slate-800/60 p-2 rounded-xl border border-slate-700/80 flex items-center justify-between overflow-x-auto gap-1">
+    <!-- Month Tabs Navigation Bar (Visible in Paid VPS view) -->
+    <div id="monthBarSection" class="mt-6 bg-slate-800/60 p-2 rounded-xl border border-slate-700/80 flex items-center justify-between overflow-x-auto gap-1">
       <div id="monthTabsContainer" class="flex items-center gap-1 min-w-max">
         <!-- Injected via JS: Jan, Feb, Mar ... Dec -->
       </div>
@@ -178,21 +231,8 @@
       </div>
 
       <!-- Quick Filter Pills: All | Need to Pay | Paid -->
-      <div class="flex items-center gap-1.5 bg-slate-900/80 p-1 rounded-lg border border-slate-700/70">
-        <button data-filter="all" class="filter-tab active text-xs font-semibold px-3 py-1.5 rounded-md transition cursor-pointer">
-          All Users
-        </button>
-        <button data-filter="due" class="filter-tab text-xs font-semibold px-3 py-1.5 rounded-md text-rose-400 hover:text-white transition cursor-pointer flex items-center gap-1">
-          <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
-          Need to Pay
-        </button>
-        <button data-filter="paid" class="filter-tab text-xs font-semibold px-3 py-1.5 rounded-md text-emerald-400 hover:text-white transition cursor-pointer flex items-center gap-1">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-          Paid
-        </button>
-        <button data-filter="unset" class="filter-tab text-xs font-semibold px-3 py-1.5 rounded-md text-slate-400 hover:text-white transition cursor-pointer">
-          Unset
-        </button>
+      <div id="filterPillsContainer" class="flex items-center gap-1.5 bg-slate-900/80 p-1 rounded-lg border border-slate-700/70">
+        <!-- Populated/Adapted dynamically by app.js based on active view -->
       </div>
 
       <!-- Batch Actions -->
@@ -212,7 +252,7 @@
       <!-- Scrollable Table -->
       <div class="overflow-x-auto max-h-[70vh]">
         <table class="w-full text-left text-xs sm:text-sm border-collapse">
-          <thead class="sticky top-0 bg-slate-900/95 backdrop-blur z-20 text-slate-300 uppercase text-[11px] tracking-wider border-b border-slate-700">
+          <thead id="tableThead" class="sticky top-0 bg-slate-900/95 backdrop-blur z-20 text-slate-300 uppercase text-[11px] tracking-wider border-b border-slate-700">
             <tr>
               <th class="p-3 w-10 text-center">
                 <input type="checkbox" id="selectAllCheckbox" class="rounded bg-slate-800 border-slate-600 text-indigo-600 focus:ring-0 cursor-pointer">
@@ -282,6 +322,22 @@
       <form id="userForm" class="p-6 space-y-4">
         <input type="hidden" id="userIdInput">
 
+        <!-- Segmented VPS Type Toggle -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5">Account / VPS Type</label>
+          <div class="grid grid-cols-2 gap-2 p-1 bg-slate-900 rounded-lg border border-slate-700">
+            <button type="button" id="toggleTypePaid" class="vps-type-btn active flex items-center justify-center gap-2 py-2 px-3 rounded-md text-xs font-semibold transition cursor-pointer">
+              <i data-lucide="credit-card" class="w-3.5 h-3.5 text-indigo-400"></i>
+              <span>Paid VPS ($5/mo)</span>
+            </button>
+            <button type="button" id="toggleTypeFree" class="vps-type-btn flex items-center justify-center gap-2 py-2 px-3 rounded-md text-xs font-semibold text-slate-400 hover:text-white transition cursor-pointer">
+              <i data-lucide="gift" class="w-3.5 h-3.5 text-emerald-400"></i>
+              <span>Free VPS (Exness)</span>
+            </button>
+          </div>
+          <input type="hidden" id="modalVpsTypeInput" value="paid">
+        </div>
+
         <!-- Email -->
         <div>
           <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">User Email <span class="text-rose-400">*</span></label>
@@ -307,53 +363,105 @@
           >
         </div>
 
-        <div class="grid grid-cols-3 gap-3">
-          <!-- Monthly Fee -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Monthly Fee ($)</label>
-            <input 
-              type="number" 
-              id="modalFeeInput" 
-              value="5" 
-              min="0" 
-              step="any"
-              class="w-full bg-slate-900 text-white text-sm rounded-lg px-3.5 py-2.5 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-            <p class="text-[11px] text-slate-400 mt-1">Fee: $5</p>
+        <!-- Paid VPS Specific Fields -->
+        <div id="paidVpsSection" class="space-y-4">
+          <div class="grid grid-cols-3 gap-3">
+            <!-- Monthly Fee -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Monthly Fee ($)</label>
+              <input 
+                type="number" 
+                id="modalFeeInput" 
+                value="5" 
+                min="0" 
+                step="any"
+                class="w-full bg-slate-900 text-white text-sm rounded-lg px-3.5 py-2.5 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+              <p class="text-[11px] text-slate-400 mt-1">Fee: $5</p>
+            </div>
+
+            <!-- 1st Payment Date -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">1st Payment Date</label>
+              <input 
+                type="date" 
+                id="modalDateInput" 
+                class="w-full bg-slate-900 text-white text-sm rounded-lg px-3.5 py-2.5 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+              <p class="text-[11px] text-slate-400 mt-1">Start date</p>
+            </div>
+
+            <!-- Upcoming Due Date -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Upcoming Due Date</label>
+              <input 
+                type="date" 
+                id="modalNextDueDateInput" 
+                class="w-full bg-slate-900 text-white text-sm rounded-lg px-3.5 py-2.5 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+              <p class="text-[11px] text-slate-400 mt-1">Next renewal</p>
+            </div>
           </div>
 
-          <!-- 1st Payment Date -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">1st Payment Date</label>
-            <input 
-              type="date" 
-              id="modalDateInput" 
-              class="w-full bg-slate-900 text-white text-sm rounded-lg px-3.5 py-2.5 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-            <p class="text-[11px] text-slate-400 mt-1">Start date</p>
-          </div>
-
-          <!-- Upcoming Due Date -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Upcoming Due Date</label>
-            <input 
-              type="date" 
-              id="modalNextDueDateInput" 
-              class="w-full bg-slate-900 text-white text-sm rounded-lg px-3.5 py-2.5 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-            <p class="text-[11px] text-slate-400 mt-1">Next renewal</p>
+          <!-- Automatic Renewal Cycle Notice -->
+          <div class="bg-indigo-950/40 border border-indigo-500/30 rounded-xl p-3 text-xs space-y-1">
+            <div class="font-semibold flex items-center gap-1.5 text-indigo-300">
+              <i data-lucide="calendar" class="w-4 h-4 text-indigo-400"></i>
+              <span>Monthly Cycle Rule</span>
+            </div>
+            <p class="text-slate-300">
+              Marked as <strong class="text-emerald-400 font-semibold">PAID</strong> for current month. Automatically advances next due date to next month.
+            </p>
           </div>
         </div>
 
-        <!-- Automatic Renewal Cycle Notice -->
-        <div class="bg-indigo-950/40 border border-indigo-500/30 rounded-xl p-3 text-xs space-y-1">
-          <div class="font-semibold flex items-center gap-1.5 text-indigo-300">
-            <i data-lucide="calendar" class="w-4 h-4 text-indigo-400"></i>
-            <span>Monthly Cycle Rule</span>
+        <!-- Exness Free VPS Specific Fields -->
+        <div id="freeVpsSection" class="hidden space-y-4">
+          <div class="grid grid-cols-2 gap-3">
+            <!-- Exness Account # / MT5 Login -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Exness Account / Login #</label>
+              <input 
+                type="text" 
+                id="modalAccountNumberInput" 
+                placeholder="e.g. 14285910"
+                class="w-full bg-slate-900 text-white text-sm rounded-lg px-3.5 py-2.5 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+              <p class="text-[11px] text-slate-400 mt-1">MT4 / MT5 Account #</p>
+            </div>
+
+            <!-- Exness Server -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Exness Server</label>
+              <input 
+                type="text" 
+                id="modalServerInput" 
+                placeholder="e.g. Exness-Real19"
+                class="w-full bg-slate-900 text-white text-sm rounded-lg px-3.5 py-2.5 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+              <p class="text-[11px] text-slate-400 mt-1">Server name</p>
+            </div>
           </div>
-          <p class="text-slate-300">
-            Marked as <strong class="text-emerald-400 font-semibold">PAID</strong> for current month. Next payment will be marked as <strong class="text-rose-400 font-semibold">NEED TO PAY</strong> on the exact same date next month.
-          </p>
+
+          <!-- Setup / Start Date -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">VPS Setup / Start Date</label>
+            <input 
+              type="date" 
+              id="modalFreeStartDateInput" 
+              class="w-full bg-slate-900 text-white text-sm rounded-lg px-3.5 py-2.5 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+          </div>
+
+          <div class="bg-emerald-950/40 border border-emerald-500/30 rounded-xl p-3 text-xs space-y-1">
+            <div class="font-semibold flex items-center gap-1.5 text-emerald-300">
+              <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+              <span>Exness Sponsored Free VPS</span>
+            </div>
+            <p class="text-slate-300">
+              No monthly subscription fee required. Client qualifies for free broker-hosted VPS via trading volume.
+            </p>
+          </div>
         </div>
 
         <!-- Notes -->
@@ -528,6 +636,105 @@
         <button id="btnSubmitImport" disabled class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg shadow transition">
           Upload & Sync Records
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Login Authentication Overlay -->
+  <div id="loginOverlay" class="fixed inset-0 z-[9999] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-300">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md shadow-2xl p-8 sm:p-10 relative overflow-hidden">
+      <!-- Decorative background glow -->
+      <div class="absolute -top-24 -left-24 w-48 h-48 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-violet-600/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <!-- Icon & Header -->
+      <div class="text-center mb-8 relative">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 mx-auto flex items-center justify-center shadow-xl shadow-indigo-500/25 mb-4">
+          <i data-lucide="shield-check" class="w-8 h-8 text-white"></i>
+        </div>
+        <h2 class="text-2xl font-bold tracking-tight text-white">VPS Fee Record</h2>
+        <p class="text-xs text-slate-400 mt-1">Please sign in to access your administrative dashboard</p>
+      </div>
+
+      <!-- Error Alert Box -->
+      <div id="loginErrorBox" class="hidden mb-6 p-3.5 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs flex items-start gap-2.5">
+        <i data-lucide="alert-circle" class="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5"></i>
+        <span id="loginErrorMsg">Invalid username or password.</span>
+      </div>
+
+      <!-- Login Form -->
+      <form id="loginForm" class="space-y-4 relative" onsubmit="return false;">
+        <div>
+          <label for="loginUsername" class="block text-xs font-semibold text-slate-300 mb-1.5">Username</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+              <i data-lucide="user" class="w-4 h-4"></i>
+            </span>
+            <input 
+              type="text" 
+              id="loginUsername" 
+              name="username"
+              autocomplete="username"
+              required 
+              value="HussainIjaz"
+              placeholder="Username" 
+              class="w-full bg-slate-800/90 text-white text-sm rounded-xl pl-10 pr-4 py-2.5 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+            >
+          </div>
+        </div>
+
+        <div>
+          <label for="loginPassword" class="block text-xs font-semibold text-slate-300 mb-1.5">Password</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+              <i data-lucide="lock" class="w-4 h-4"></i>
+            </span>
+            <input 
+              type="password" 
+              id="loginPassword" 
+              name="password"
+              autocomplete="current-password"
+              required 
+              placeholder="••••••••••••" 
+              class="w-full bg-slate-800/90 text-white text-sm rounded-xl pl-10 pr-10 py-2.5 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+            >
+            <button 
+              type="button" 
+              id="btnTogglePassword" 
+              title="Show or hide password" 
+              class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 transition cursor-pointer"
+            >
+              <i data-lucide="eye" id="eyeIcon" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Remember Me Checkbox -->
+        <div class="flex items-center justify-between pt-1">
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input 
+              type="checkbox" 
+              id="loginRememberMe" 
+              checked 
+              class="w-4 h-4 rounded bg-slate-800 border-slate-600 text-indigo-600 focus:ring-0 cursor-pointer"
+            >
+            <span class="text-xs text-slate-300 font-medium">Remember me (keep signed in)</span>
+          </label>
+        </div>
+
+        <!-- Submit Button -->
+        <button 
+          type="submit" 
+          id="btnLoginSubmit" 
+          class="w-full mt-2 py-3 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-500/25 transition cursor-pointer flex items-center justify-center gap-2"
+        >
+          <span>Sign In to Dashboard</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </form>
+
+      <div class="text-center mt-6 pt-4 border-t border-slate-800/60">
+        <p class="text-[11px] text-slate-500">Authorized Personnel Only • Encrypted Session</p>
       </div>
     </div>
   </div>

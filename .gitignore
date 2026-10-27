@@ -9,6 +9,7 @@ atlas-credentials.env
 # Local data & uploads
 data/uploads/
 data/local-backup.json
+scripts/
 
 # Excel file (local data)
 VPS Fee Record.xlsx

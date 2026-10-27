@@ -136,3 +136,36 @@ th.active-month-col {
     opacity: 1;
   }
 }
+
+/* Main Navigation Tabs */
+.main-nav-tab {
+  transition: all 0.2s ease;
+}
+.main-nav-tab.active {
+  background: linear-gradient(135deg, #4f46e5, #6366f1) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+}
+
+/* Modal VPS Type Toggle */
+.vps-type-btn.active {
+  background: #4f46e5 !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Login Overlay Animation */
+#loginOverlay:not(.hidden) > div {
+  animation: modalScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
