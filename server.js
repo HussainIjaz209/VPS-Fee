@@ -202,55 +202,78 @@ async function applyAutoDueStatuses(col, records) {
 
   for (const record of records) {
     if (record.vpsType === 'free_exness' || record.monthlyFee === 0) continue;
-    if (!record.payments) continue;
+    if (!record.firstPaymentDate || !record.firstPaymentDate.includes('-')) continue;
 
-    let joinYear = null;
-    let joinMonthIndex = null;
-    if (record.firstPaymentDate && record.firstPaymentDate.includes('-')) {
-      const parts = record.firstPaymentDate.trim().split('-');
-      if (parts.length >= 2) {
-        joinYear = parseInt(parts[0], 10);
-        joinMonthIndex = parseInt(parts[1], 10) - 1;
-      }
-    }
+    const fpParts = record.firstPaymentDate.trim().split('-');
+    if (fpParts.length < 2) continue;
 
-    const dueDay = record.dueDay || (record.firstPaymentDate && record.firstPaymentDate.includes('-')
-      ? parseInt(record.firstPaymentDate.trim().split('-')[2], 10) || 1
-      : null);
+    const joinYear = parseInt(fpParts[0], 10);
+    const joinMonthIndex = parseInt(fpParts[1], 10) - 1;
+    if (isNaN(joinYear) || isNaN(joinMonthIndex)) continue;
+
+    const dueDay = record.dueDay ||
+      (fpParts.length >= 3 ? parseInt(fpParts[2], 10) || 1 : 1);
 
     const setObj = {};
 
-    for (const [yearStr, monthObj] of Object.entries(record.payments)) {
-      if (typeof monthObj !== 'object') continue;
+    // Determine which years to scan: from join year up to current year
+    const todayYear = new Date().getFullYear();
+    const yearsToScan = new Set();
+    for (let y = joinYear; y <= todayYear; y++) {
+      yearsToScan.add(String(y));
+    }
+    // Also include any years already in the payments object
+    if (record.payments) {
+      for (const yr of Object.keys(record.payments)) {
+        yearsToScan.add(yr);
+      }
+    }
+
+    for (const yearStr of yearsToScan) {
       const yearNum = parseInt(yearStr, 10);
       if (isNaN(yearNum)) continue;
 
-      for (const [monthName, pData] of Object.entries(monthObj)) {
-        const mIdx = MONTHS.indexOf(monthName);
-        if (mIdx === -1) continue;
+      for (let mIdx = 0; mIdx < 12; mIdx++) {
+        const monthName = MONTHS[mIdx];
 
         // Is this month strictly before the join month?
-        const isPreJoin = (joinYear !== null && joinMonthIndex !== null) &&
-          (yearNum < joinYear || (yearNum === joinYear && mIdx < joinMonthIndex));
+        const isPreJoin =
+          yearNum < joinYear ||
+          (yearNum === joinYear && mIdx < joinMonthIndex);
 
         if (isPreJoin) {
-          // Pre-join months MUST be unset! If marked due, reset back to unset!
-          if (pData?.status === 'due') {
+          // Pre-join months MUST be unset — reset if accidentally 'due'
+          const existing = record.payments?.[yearStr]?.[monthName];
+          if (existing?.status === 'due') {
             setObj[`payments.${yearStr}.${monthName}`] = { status: 'unset' };
           }
-          continue; // Never auto-due pre-join months
+          continue;
         }
 
-        // For months on/after join date:
-        if (pData?.status === 'unset' && dueDay) {
-          const dueDateStr = getDueDateForMonth(yearStr, monthName, dueDay);
-          if (dueDateStr && todayStr >= dueDateStr) {
+        // Is this month in the future (due date hasn't arrived yet)?
+        const dueDateStr = getDueDateForMonth(yearStr, monthName, dueDay);
+        if (!dueDateStr) continue;
+
+        const existing = record.payments?.[yearStr]?.[monthName];
+        const currentStatus = existing?.status || 'unset';
+
+        if (currentStatus === 'paid') continue; // Never touch paid months
+
+        if (todayStr >= dueDateStr) {
+          // Due date has passed — flip 'unset' to 'due'
+          if (currentStatus === 'unset') {
             setObj[`payments.${yearStr}.${monthName}`] = {
               status: 'due',
               dueDate: dueDateStr,
               amount: record.monthlyFee || 5,
               notes: `Auto-due on ${dueDateStr}`
             };
+          }
+        } else {
+          // Due date in future — if currently 'due', reset to 'unset'
+          // (guards against stale records from manual edits or restores)
+          if (currentStatus === 'due') {
+            setObj[`payments.${yearStr}.${monthName}`] = { status: 'unset' };
           }
         }
       }
@@ -488,7 +511,7 @@ app.put('/api/records/:id', requireAuth, async (req, res) => {
   try {
     const col = await getCollection();
     const { id } = req.params;
-    const { email, name, monthlyFee, currency, firstPaymentDate, nextDueDate, notes, status } = req.body;
+    const { email, name, monthlyFee, currency, firstPaymentDate, nextDueDate, notes, status, vpsType, accountNumber, server } = req.body;
 
     const updateFields = {
       ...(email !== undefined && { email: email.trim() }),
@@ -497,6 +520,9 @@ app.put('/api/records/:id', requireAuth, async (req, res) => {
       ...(currency !== undefined && { currency }),
       ...(notes !== undefined && { notes: notes.trim() }),
       ...(status !== undefined && { status }),
+      ...(vpsType !== undefined && { vpsType }),
+      ...(accountNumber !== undefined && { accountNumber: accountNumber.trim() }),
+      ...(server !== undefined && { server: server.trim() }),
       updatedAt: new Date()
     };
 
@@ -521,6 +547,53 @@ app.put('/api/records/:id', requireAuth, async (req, res) => {
     res.json({ success: true, message: 'Record updated successfully.', record: { ...updated, _id: updated._id.toString() } });
   } catch (err) {
     console.error('Error updating record:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 4b. Toggle Account VPS Type (Shift between Free VPS & Paid VPS, preserving payments)
+app.post('/api/records/:id/toggle-type', requireAuth, async (req, res) => {
+  try {
+    const col = await getCollection();
+    const { id } = req.params;
+    const { targetType, fee } = req.body || {};
+
+    const record = await col.findOne({ _id: parseId(id) });
+    if (!record) {
+      return res.status(404).json({ success: false, message: 'Record not found.' });
+    }
+
+    const currentType = (record.vpsType === 'free_exness' || record.monthlyFee === 0) ? 'free_exness' : 'paid';
+    const newType = targetType || (currentType === 'free_exness' ? 'paid' : 'free_exness');
+
+    const updateFields = {
+      vpsType: newType,
+      updatedAt: new Date()
+    };
+
+    if (newType === 'free_exness') {
+      updateFields.monthlyFee = 0;
+      // All existing payments in record.payments are kept intact!
+    } else {
+      updateFields.monthlyFee = fee !== undefined ? Number(fee) : (record.monthlyFee > 0 ? record.monthlyFee : 5);
+      // Recompute nextDueDate if needed
+      const currentNextDue = computeNextDueDate(record);
+      if (currentNextDue) {
+        updateFields.nextDueDate = currentNextDue;
+      }
+    }
+
+    await col.updateOne({ _id: parseId(id) }, { $set: updateFields });
+    const updated = await col.findOne({ _id: parseId(id) });
+
+    const typeLabel = newType === 'free_exness' ? 'Exness Free VPS' : 'Paid VPS ($5/mo)';
+    res.json({
+      success: true,
+      message: `Account shifted to ${typeLabel}. Payment records preserved.`,
+      record: { ...updated, _id: updated._id.toString() }
+    });
+  } catch (err) {
+    console.error('Error toggling VPS type:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });

@@ -9,8 +9,8 @@ const MONTHS = [
 const state = {
   records: [],
   activeView: 'paid',     // 'paid' | 'free' | 'all'
-  selectedYear: '2026',
-  activeMonth: 'October', // Default to October based on Excel data
+  selectedYear: String(new Date().getFullYear()),
+  activeMonth: MONTHS[new Date().getMonth()], // Automatically select the current calendar month
   statusFilter: 'all',    // 'all' | 'due' | 'paid' | 'unset' (or 'all_paid' | 'all_free' in all view)
   searchQuery: '',
   selectedIds: new Set(),
@@ -655,6 +655,29 @@ function isFreeVps(r) {
   return r && (r.vpsType === 'free_exness' || r.monthlyFee === 0);
 }
 
+function getTodayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+/**
+ * Returns the due date string (YYYY-MM-DD) for a specific year+month for a record,
+ * based on its firstPaymentDate / dueDay.
+ */
+function getDueDateForRecord(record, yearStr, monthName) {
+  if (!record.firstPaymentDate) return null;
+  const parts = record.firstPaymentDate.trim().split('-');
+  if (parts.length < 2) return null;
+  const dueDay = record.dueDay || (parts.length >= 3 ? parseInt(parts[2], 10) : 1);
+  if (!dueDay) return null;
+  const monthIndex = MONTHS.indexOf(monthName);
+  if (monthIndex === -1) return null;
+  const y = parseInt(yearStr, 10);
+  const daysInMonth = new Date(y, monthIndex + 1, 0).getDate();
+  const day = Math.min(dueDay, daysInMonth);
+  return `${yearStr}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 function getUpcomingDueDate(record) {
   if (!record.firstPaymentDate || !record.firstPaymentDate.trim()) return '';
   const dateStr = record.firstPaymentDate.trim();
@@ -740,9 +763,27 @@ function renderTable() {
   // 3. Apply Sub-Filters
   if (state.activeView === 'paid') {
     if (state.statusFilter !== 'all') {
+      const todayStr = getTodayStr();
       displayRecords = displayRecords.filter(r => {
-        const p = r.payments?.[state.selectedYear]?.[state.activeMonth]?.status || 'unset';
-        return p === state.statusFilter;
+        const p = r.payments?.[state.selectedYear]?.[state.activeMonth];
+        const dbStatus = p?.status || 'unset';
+
+        if (state.statusFilter === 'paid') return dbStatus === 'paid';
+        if (state.statusFilter === 'unset') return dbStatus === 'unset';
+
+        if (state.statusFilter === 'due') {
+          // 1. Explicitly marked due in this month
+          if (dbStatus === 'due') return true;
+          // 2. Already marked paid in this month -> not due
+          if (dbStatus === 'paid') return false;
+          // 3. User's overall subscription has lapsed / reached renewal date (nextDueDate <= today)
+          if (r.nextDueDate && r.nextDueDate <= todayStr) return true;
+          // 4. Or the due date for this specific month has arrived/passed and hasn't been paid
+          const dueDate = getDueDateForRecord(r, state.selectedYear, state.activeMonth);
+          return dueDate ? todayStr >= dueDate : false;
+        }
+
+        return true;
       });
     }
   } else if (state.activeView === 'free') {
@@ -797,6 +838,7 @@ function renderTable() {
 
 // Row Renderer 1: Paid VPS Grid (Jan - Dec)
 function renderPaidRows(records) {
+  const isFree = false;
   recordsTableBody.innerHTML = records.map(r => {
     const isSelected = state.selectedIds.has(r._id);
     const fee = r.monthlyFee !== undefined ? r.monthlyFee : 5;
@@ -885,6 +927,14 @@ function renderPaidRows(records) {
         <td class="p-3 text-right pr-4">
           <div class="flex items-center justify-end gap-1">
             <button 
+              class="p-1.5 rounded-md text-slate-400 hover:${isFree ? 'text-indigo-400' : 'text-emerald-400'} hover:bg-slate-700 transition btn-shift-type cursor-pointer" 
+              data-id="${r._id}" 
+              data-target="${isFree ? 'paid' : 'free_exness'}"
+              title="Shift to ${isFree ? 'Paid VPS ($5/mo)' : 'Exness Free VPS'} (Preserve payment history)"
+            >
+              <i data-lucide="arrow-left-right" class="w-4 h-4"></i>
+            </button>
+            <button 
               class="p-1.5 rounded-md text-slate-400 hover:text-indigo-400 hover:bg-slate-700 transition btn-edit-user cursor-pointer" 
               data-id="${r._id}" 
               title="Edit User"
@@ -968,6 +1018,14 @@ function renderFreeRows(records) {
         </td>
         <td class="p-3 text-right pr-4">
           <div class="flex items-center justify-end gap-1">
+            <button 
+              class="p-1.5 rounded-md text-slate-400 hover:text-indigo-400 hover:bg-slate-700 transition btn-shift-type cursor-pointer" 
+              data-id="${r._id}" 
+              data-target="paid"
+              title="Shift to Paid VPS ($5/mo, preserve payment history)"
+            >
+              <i data-lucide="arrow-left-right" class="w-4 h-4"></i>
+            </button>
             <button 
               class="p-1.5 rounded-md text-slate-400 hover:text-indigo-400 hover:bg-slate-700 transition btn-edit-user cursor-pointer" 
               data-id="${r._id}" 
@@ -1062,6 +1120,14 @@ function renderAllRows(records) {
         <td class="p-3 text-right pr-4">
           <div class="flex items-center justify-end gap-1">
             <button 
+              class="p-1.5 rounded-md text-slate-400 hover:${isFree ? 'text-indigo-400' : 'text-emerald-400'} hover:bg-slate-700 transition btn-shift-type cursor-pointer" 
+              data-id="${r._id}" 
+              data-target="${isFree ? 'paid' : 'free_exness'}"
+              title="Shift to ${isFree ? 'Paid VPS ($5/mo)' : 'Exness Free VPS'} (Preserve payment history)"
+            >
+              <i data-lucide="arrow-left-right" class="w-4 h-4"></i>
+            </button>
+            <button 
               class="p-1.5 rounded-md text-slate-400 hover:text-indigo-400 hover:bg-slate-700 transition btn-edit-user cursor-pointer" 
               data-id="${r._id}" 
               title="Edit User"
@@ -1083,6 +1149,15 @@ function renderAllRows(records) {
 }
 
 function attachRowEvents() {
+  // Shift Account VPS Type button (Free <-> Paid)
+  document.querySelectorAll('.btn-shift-type').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      const targetType = btn.dataset.target;
+      await shiftAccountType(id, targetType);
+    });
+  });
+
   // Row checkboxes
   document.querySelectorAll('.row-checkbox').forEach(cb => {
     cb.addEventListener('change', () => {
@@ -1380,6 +1455,35 @@ userForm.addEventListener('submit', async (e) => {
     showToast('Failed to save record: ' + err.message, 'error');
   }
 });
+
+async function shiftAccountType(id, targetType) {
+  const record = state.records.find(r => r._id === id);
+  if (!record) return;
+
+  const currentIsFree = isFreeVps(record);
+  const targetIsFree = targetType === 'free_exness';
+  const newTypeLabel = targetIsFree ? 'Exness Free VPS (Sponsored)' : 'Paid VPS ($5/month)';
+  const promptMessage = `Shift "${record.name}" to ${newTypeLabel}?\n\nNote: All past and existing payment records for ${record.name} will remain 100% saved and intact.`;
+
+  if (!confirm(promptMessage)) return;
+
+  try {
+    const res = await fetch(`/api/records/${id}/toggle-type`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetType })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message, 'success');
+      loadData();
+    } else {
+      showToast('Error: ' + data.message, 'error');
+    }
+  } catch (err) {
+    showToast('Failed to shift account type: ' + err.message, 'error');
+  }
+}
 
 async function deleteUser(id) {
   const record = state.records.find(r => r._id === id);

@@ -154,6 +154,15 @@ th.active-month-col {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
+/* Hide scrollbar for horizontal scroll toolbars on mobile */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 /* Login Overlay Animation */
 #loginOverlay:not(.hidden) > div {
   animation: modalScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
